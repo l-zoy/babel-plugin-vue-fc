@@ -1,4 +1,6 @@
-module.exports = function ({ types: t }) {
+module.exports = function (props) {
+  const { types: t } = props
+
   return {
     visitor: {
       Program(path) {
@@ -11,28 +13,52 @@ module.exports = function ({ types: t }) {
           ) {
             if (
               item.type === 'ExportNamedDeclaration' &&
-              item.declaration.type === 'FunctionDeclaration'
+              (item.declaration.type === 'FunctionDeclaration' ||
+                item.declaration.type === 'VariableDeclaration')
             ) {
-              item.declaration.body.body.forEach((itemBlock) => {
-                if (
-                  itemBlock.type === 'ReturnStatement' &&
-                  itemBlock.argument.type === 'JSXElement'
-                ) {
-                  itemBlock.argument = t.arrowFunctionExpression([], itemBlock.argument)
+              if (item.declaration.type === 'VariableDeclaration') {
+                item.declaration.declarations.forEach((itemBlock) => {
+                  if (
+                    itemBlock.init.type === 'ArrowFunctionExpression' ||
+                    itemBlock.init.type === 'FunctionExpression'
+                  ) {
+                    itemBlock.init.body.body.forEach((childBlock) => {
+                      if (
+                        childBlock.type === 'ReturnStatement' &&
+                        childBlock.argument.type === 'JSXElement'
+                      ) {
+                        childBlock.argument = t.arrowFunctionExpression([], childBlock.argument)
 
-                  const setup = t.objectMethod(
-                    'method',
-                    t.identifier('setup'),
-                    item.declaration.params,
-                    item.declaration.body
-                  )
+                        const setup = t.objectProperty(t.identifier('setup'), itemBlock.init)
+                        const value = t.objectExpression([setup])
 
-                  const value = t.objectExpression([setup])
-                  const declarations = t.variableDeclarator(item.declaration.id, value)
+                        itemBlock.init = value
+                      }
+                    })
+                  }
+                })
+              } else {
+                item.declaration.body.body.forEach((itemBlock) => {
+                  if (
+                    itemBlock.type === 'ReturnStatement' &&
+                    itemBlock.argument.type === 'JSXElement'
+                  ) {
+                    itemBlock.argument = t.arrowFunctionExpression([], itemBlock.argument)
 
-                  item.declaration = t.variableDeclaration('const', [declarations])
-                }
-              })
+                    const setup = t.objectMethod(
+                      'method',
+                      t.identifier('setup'),
+                      item.declaration.params,
+                      item.declaration.body
+                    )
+
+                    const value = t.objectExpression([setup])
+                    const declarations = t.variableDeclarator(item.declaration.id, value)
+
+                    item.declaration = t.variableDeclaration('const', [declarations])
+                  }
+                })
+              }
             } else if (item.type === 'FunctionDeclaration') {
               item.body.body.forEach((itemBlock) => {
                 if (

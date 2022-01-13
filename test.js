@@ -1,7 +1,27 @@
 const { transform } = require('@babel/core')
 
 const code = `
-  function SFC(){
+  function SFC(hello){
+    return <div>hello setup</div>
+  }
+
+  export default function SFC1(hello){
+    return <div>hello setup</div>
+  }
+
+  export function SFC3(hello){
+    return <div>hello setup</div>
+  }
+
+  const SFC4 = (hello) => {
+    return <div>hello setup</div> 
+  }
+
+  export const SFC5 = (hello) => {
+    return <div>hello setup</div> 
+  }
+
+  export const SFC6 = function(hello){
     return <div>hello setup</div>
   }
 `
